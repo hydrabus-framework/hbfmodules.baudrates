@@ -9,6 +9,7 @@ class Baudrate(BaseModule):
     """
     Iterate baudrate to find the correct value
     TODO: Add Parity bit and Stop bit option
+    TODO: Add all hydrabus command BBIO mode to utils directory in core framework
     """
     def __init__(self):
         super(Baudrate, self).__init__()
@@ -64,11 +65,11 @@ class Baudrate(BaseModule):
                 val = self.serial.read(1)
                 return val
         else:
-            self.logger.print_error("incorrect commands type - Bytes needed")
+            self.logger.print("incorrect commands type - Bytes needed", "error")
             return False
 
     def wait_ubtn(self):
-        self.logger.print_user_interaction("Please press hydrabus ubtn in order to switch baudrate speed")
+        self.logger.print("Please press hydrabus ubtn in order to switch baudrate speed", "user")
         while True:
             if self.serial.read(1) == 'B'.encode('utf-8'):
                 if self.serial.read(3) == 'BIO'.encode('utf-8'):
@@ -90,12 +91,12 @@ class Baudrate(BaseModule):
         self.init_hb()
         # Change baudrate speed
         if b'\x01' != self.hb_commands(baudrate["hex"]):
-            self.logger.print_error("Cannot set Baudrate")
+            self.logger.print("Cannot set Baudrate", "error")
             return False
-        self.logger.print_success("Switching to baudrate: {}".format(baudrate["dec"]))
+        self.logger.print("Switching to baudrate: {}".format(baudrate["dec"]), "success")
 
         # Activate echo UART RX Mode
-        self.logger.print_info("Starting BBIO_UART_BRIDGE")
+        self.logger.print("Starting BBIO_UART_BRIDGE", "info")
         self.hb_commands(b'\x0F')
 
         return True
@@ -121,8 +122,8 @@ class Baudrate(BaseModule):
         threshold = 25
         valid_characters = self.gen_char_list()
 
-        print("Starting baurate detection, turn on your serial device now")
-        print("Press Ctrl+C to cancel")
+        self.logger.print("Starting baurate detection, turn on your serial device now", "header")
+        self.logger.print("Press Ctrl+C to cancel", "header")
 
         for baudrate in self.baudrates:
             loop = 0
@@ -151,7 +152,7 @@ class Baudrate(BaseModule):
                             self.wait_ubtn()
                             break
                         if count >= threshold and whitespace > 0 and punctuation >= 0 and vowels > 0:
-                            self.logger.print_success_result("Valid Baudrate found: {}".format(baudrate["dec"]))
+                            self.logger.print("Valid Baudrate found: {}".format(baudrate["dec"]), "result")
                             resp = prompt('Would you like to open a miniterm session ? N/y')
                             if resp.upper() == 'Y':
                                 miniterm = Miniterm(self.serial)
@@ -178,23 +179,23 @@ class Baudrate(BaseModule):
         """
         Init the hydrabus to switch UART mode
         """
-        self.logger.print_info("Switching to BBIO mode")
+        self.logger.print("Switching to BBIO mode", "info")
         for i in range(20):
             self.serial.write(b'\x00')
         if "BBIO1".encode('utf-8') not in self.serial.read(5):
-            self.logger.print_info("Could not get into bbIO mode")
+            self.logger.print("Could not get into bbIO mode", "info")
             quit()
 
         # Switching to UART mode
         if "ART1".encode('utf-8') not in self.hb_commands(b'\x03'):
-            self.logger.print_info("Cannot set UART mode")
+            self.logger.print("Cannot set UART mode", "info")
             quit()
 
     def reset_hb(self):
         """
         Reset hydrabus to return in console mode
         """
-        self.logger.print_info("Reset hydrabus to console mode")
+        self.logger.print("Reset hydrabus to console mode", "info")
         self.serial.write(b'\x00')
         self.serial.write(b'\x0F')
         time.sleep(0.2)
@@ -211,9 +212,9 @@ class Baudrate(BaseModule):
                 self.serial = ser.Serial(device, 115200, timeout=2)
                 return True
             except ser.serialutil.SerialException as err:
-                self.logger.print_error(err)
+                self.logger.print(err, "error")
         else:
-            self.logger.print_error("Hydrabus value not set")
+            self.logger.print("Hydrabus value not set", "error")
             return False
 
     def run(self):
