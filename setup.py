@@ -13,7 +13,7 @@ setup(
     license='GPLv3',
     description=description,
     author='Ghecko',
-    url='https://github.com/hydrabus-framework/' + name + '.base',
+    url='https://github.com/hydrabus-framework/' + name + '.baudrates',
     install_requires=[
         'tabulate'
     ],
@@ -22,5 +22,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Development Status :: 3 - Alpha'
     ],
-    keywords=['hydrabus', 'framework', 'hardware', 'security']
+    keywords=['hydrabus', 'framework', 'hardware', 'security', 'baudrates']
 )
