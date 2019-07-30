@@ -1,7 +1,7 @@
 import serial
 import time
 
-from hydrabus_framework.modules.amodule import AModule
+from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
 from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close
 from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect
@@ -64,7 +64,7 @@ class Baudrate(AModule):
             val = self.serial.read(1)
             return val
         else:
-            self.logger.print("incorrect commands type - Bytes needed", Logger.ERROR)
+            self.logger.handle("incorrect commands type - Bytes needed", Logger.ERROR)
             return False
 
     def change_baudrate(self, baudrate):
@@ -79,7 +79,7 @@ class Baudrate(AModule):
             return False
         else:
             # Activate echo UART RX Mode
-            self.logger.print("Starting BBIO_UART_BRIDGE", Logger.INFO)
+            self.logger.handle("Starting BBIO_UART_BRIDGE", Logger.INFO)
 
             self.hb_commands(b'\x0F')
             return True
@@ -105,8 +105,8 @@ class Baudrate(AModule):
         threshold = 25
         valid_characters = self.gen_char_list()
 
-        self.logger.print("Starting baurate detection, turn on your serial device now", Logger.HEADER)
-        self.logger.print("Press Ctrl+C to cancel", Logger.HEADER)
+        self.logger.handle("Starting baurate detection, turn on your serial device now", Logger.HEADER)
+        self.logger.handle("Press Ctrl+C to cancel", Logger.HEADER)
 
         for baudrate in self.baudrates:
             loop = 0
@@ -133,12 +133,12 @@ class Baudrate(AModule):
                             punctuation = 0
                             vowels = 0
                             count = 0
-                            self.logger.print("Please press hydrabus ubtn in order to switch baudrate speed",
+                            self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
                                               Logger.USER_INTERACT)
                             hb_wait_ubtn(self.serial)
                             break
                         if count >= threshold and whitespace > 0 and punctuation >= 0 and vowels > 0:
-                            self.logger.print("Valid Baudrate found: {}".format(baudrate["dec"]), Logger.RESULT)
+                            self.logger.handle("Valid Baudrate found: {}".format(baudrate["dec"]), Logger.RESULT)
                             resp = prompt('Would you like to open a miniterm session ? N/y: ')
                             if resp.upper() == 'Y':
                                 miniterm = Miniterm(self.serial)
@@ -155,12 +155,12 @@ class Baudrate(AModule):
                         self.trigger_device()
                         continue
                     else:
-                        self.logger.print("Please press hydrabus ubtn in order to switch baudrate speed",
+                        self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
                                           Logger.USER_INTERACT)
                         hb_wait_ubtn(self.serial)
                         break
             else:
-                self.logger.print("Please press hydrabus ubtn in order to switch baudrate speed", Logger.USER_INTERACT)
+                self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed", Logger.USER_INTERACT)
                 hb_wait_ubtn(self.serial)
                 break
 
@@ -172,12 +172,12 @@ class Baudrate(AModule):
                 return False
             return True
         else:
-            self.logger.print("Hydrabus value not set", Logger.ERROR)
+            self.logger.handle("Hydrabus value not set", Logger.ERROR)
             return False
 
     def run(self):
         if self.connect():
             self.baudrate_detect()
-            self.logger.print("Reset hydrabus to console mode", Logger.INFO)
+            self.logger.handle("Reset hydrabus to console mode", Logger.INFO)
             hb_reset(self.serial)
             hb_close(self.serial)
