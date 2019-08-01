@@ -5,8 +5,8 @@ from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
 from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close
 from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect
+from hydrabus_framework.utils.miniterm import main
 from prompt_toolkit import prompt
-from serial.tools.miniterm import Miniterm
 
 
 class Baudrate(AModule):
@@ -141,14 +141,8 @@ class Baudrate(AModule):
                             self.logger.handle("Valid Baudrate found: {}".format(baudrate["dec"]), Logger.RESULT)
                             resp = prompt('Would you like to open a miniterm session ? N/y: ')
                             if resp.upper() == 'Y':
-                                miniterm = Miniterm(self.serial)
-                                miniterm.start()
-                                try:
-                                    miniterm.join(True)
-                                except KeyboardInterrupt:
-                                    pass
-                                miniterm.join()
-                                miniterm.close()
+                                hb_close(self.serial)
+                                main('/dev/ttyACM0', 115200)
                             break
                     elif loop < 3:
                         loop += 1
@@ -156,7 +150,7 @@ class Baudrate(AModule):
                         continue
                     else:
                         self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
-                                          Logger.USER_INTERACT)
+                                           Logger.USER_INTERACT)
                         hb_wait_ubtn(self.serial)
                         break
             else:
