@@ -1,11 +1,13 @@
+import codecs
 import serial
 import time
 
+from hydrabus_framework.core.command.miniterm import miniterm
+from hydrabus_framework.core.config import load_config
 from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
 from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close
 from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect
-from hydrabus_framework.utils.miniterm import main
 from prompt_toolkit import prompt
 
 
@@ -25,12 +27,20 @@ class Baudrate(AModule):
         self.baudrates = [{"dec": 9600, "hex": b'\x64'}, {"dec": 19200, "hex": b'\x65'}, {"dec": 38400, "hex": b'\x66'},
                           {"dec": 57600, "hex": b'\x67'}, {"dec": 115200, "hex": b'\x6a'}]
         self.serial = serial.Serial()
-        self.description = "Automatically detect baudrate of a target device"
+        self.meta.update({
+            'name': 'UART baudrate detection',
+            'version': '0.1',
+            'description': 'Automatically detect baudrate of a target device',
+            'author': 'Jordan Ovrè'
+        })
         self.options = [
-            {"Name": "Hydrabus", "Value": "", "Required": True, "Type": "string",
+            {"Name": "hydrabus", "Value": "", "Required": True, "Type": "string",
              "Description": "Hydrabus device", "Default": "/dev/ttyACM0"},
             {"Name": "timeout", "Value": "", "Required": True, "Type": "int",
              "Description": "Hydrabus read timeout", "Default": 2},
+            {"Name": "trigger", "Value": "", "Required": True, "Type": "bool",
+             "Description": "If true, trigger the device if hydrabus didn't receive anything from the target",
+             "Default": False}
         ]
 
     def gen_char_list(self):
@@ -89,8 +99,11 @@ class Baudrate(AModule):
         Send a carriage return to trigger the target device
         in case no byte(s) is received
         """
+        self.logger.handle("Trigger the device", Logger.INFO)
         self.serial.write(b'\x0D\x0A')
-        time.sleep(0.2)
+        # Read back \r\n character
+        self.serial.read(2)
+        time.sleep(0.5)
 
     def baudrate_detect(self):
         """
@@ -105,17 +118,29 @@ class Baudrate(AModule):
         threshold = 25
         valid_characters = self.gen_char_list()
 
+        try:
+            trigger = self.get_option_value("trigger")
+        except UserWarning:
+            self.logger.handle("Unable to recover trigger settings, set it to False", Logger.ERROR)
+            trigger = False
+
         self.logger.handle("Starting baurate detection, turn on your serial device now", Logger.HEADER)
         self.logger.handle("Press Ctrl+C to cancel", Logger.HEADER)
 
         for baudrate in self.baudrates:
             loop = 0
             if self.change_baudrate(baudrate):
+                progress = self.logger.progress('Read byte')
                 while True:
                     tmp = self.serial.read(1)
-                    print(tmp)
-                    # TODO: Print readed bytes in dynamic manner
                     if len(tmp) > 0:
+                        # Dynamic print
+                        try:
+                            tmp.decode()
+                            progress.status(tmp.decode())
+                        except UnicodeDecodeError:
+                            tmp2 = tmp
+                            progress.status('0x{}'.format(codecs.encode(tmp2, 'hex').decode()))
                         try:
                             byte = tmp.decode('utf-8')
                         except UnicodeDecodeError:
@@ -133,22 +158,26 @@ class Baudrate(AModule):
                             punctuation = 0
                             vowels = 0
                             count = 0
+                            progress.stop()
                             self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
-                                              Logger.USER_INTERACT)
+                                               Logger.USER_INTERACT)
                             hb_wait_ubtn(self.serial)
                             break
                         if count >= threshold and whitespace > 0 and punctuation >= 0 and vowels > 0:
+                            progress.stop()
                             self.logger.handle("Valid Baudrate found: {}".format(baudrate["dec"]), Logger.RESULT)
                             resp = prompt('Would you like to open a miniterm session ? N/y: ')
                             if resp.upper() == 'Y':
                                 hb_close(self.serial)
-                                main('/dev/ttyACM0', 115200)
+                                config = load_config()
+                                miniterm(config=config)
                             break
-                    elif loop < 3:
+                    elif trigger and loop < 3:
                         loop += 1
                         self.trigger_device()
                         continue
                     else:
+                        progress.stop()
                         self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
                                            Logger.USER_INTERACT)
                         hb_wait_ubtn(self.serial)
@@ -159,14 +188,15 @@ class Baudrate(AModule):
                 break
 
     def connect(self):
-        ret, device = self.get_option_value("Hydrabus")
-        if ret:
-            self.serial = hb_connect(device=device, baudrate=115200, timeout=1)
+        try:
+            device = self.get_option_value("hydrabus")
+            timeout = int(self.get_option_value("timeout"))
+            self.serial = hb_connect(device=device, baudrate=115200, timeout=timeout)
             if not self.serial:
                 return False
             return True
-        else:
-            self.logger.handle("Hydrabus value not set", Logger.ERROR)
+        except UserWarning as err:
+            self.logger.handle("{}".format(err), Logger.ERROR)
             return False
 
     def run(self):
