@@ -15,7 +15,6 @@ class Baudrate(AModule):
     """
     Iterate baudrate to find the correct value
     TODO: Add Parity bit and Stop bit option
-    TODO: Add all hydrabus command BBIO mode to utils directory in core framework
     """
     def __init__(self):
         super(Baudrate, self).__init__()
