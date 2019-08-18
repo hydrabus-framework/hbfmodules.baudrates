@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 __author__ = "Ghecko <ghecko78@gmail.com>"
 
 description = 'Hydrabus Framework baudrate detection module'
-name = 'hbfmodules.baudrates'
+name = 'hbfmodules.uart.baudrates'
 setup(
     name=name,
     version='0.1.0',
@@ -13,7 +13,7 @@ setup(
     license='GPLv3',
     description=description,
     author='Ghecko',
-    url='https://github.com/hydrabus-framework/' + name + '.baudrates',
+    url='https://github.com/hydrabus-framework/' + name,
     install_requires=[
         'tabulate'
     ],
@@ -22,5 +22,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Development Status :: 3 - Alpha'
     ],
-    keywords=['hydrabus', 'framework', 'hardware', 'security', 'baudrates']
+    keywords=['hydrabus', 'framework', 'hardware', 'security', 'baudrates', 'uart']
 )
