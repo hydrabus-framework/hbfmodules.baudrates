@@ -8,7 +8,7 @@ description = 'Hydrabus Framework baudrate detection module'
 name = 'hbfmodules.uart.baudrates'
 setup(
     name=name,
-    version='0.1.0',
+    version='0.0.1',
     packages=find_packages(),
     license='GPLv3',
     description=description,

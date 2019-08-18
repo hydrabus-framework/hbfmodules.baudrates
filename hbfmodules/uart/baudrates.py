@@ -28,7 +28,7 @@ class Baudrate(AModule):
         self.serial = serial.Serial()
         self.meta.update({
             'name': 'UART baudrate detection',
-            'version': '0.1',
+            'version': '0.0.1',
             'description': 'Automatically detect baudrate of a target device',
             'author': 'Jordan Ovrè'
         })
