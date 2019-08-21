@@ -6,8 +6,8 @@ from hydrabus_framework.core.command.miniterm import miniterm
 from hydrabus_framework.core.config import load_config
 from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
-from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close
-from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect_bbio
+from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close, hb_connect_bbio
+from hydrabus_framework.utils.protocols.uart import hb_set_baudrate
 from prompt_toolkit import prompt
 
 
