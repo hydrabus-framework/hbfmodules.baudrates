@@ -7,7 +7,7 @@ from hydrabus_framework.core.config import load_config
 from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
 from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close
-from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect
+from hydrabus_framework.utils.protocols.uart import hb_set_baudrate, hb_connect_bbio
 from prompt_toolkit import prompt
 
 
@@ -190,7 +190,7 @@ class Baudrate(AModule):
         try:
             device = self.get_option_value("hydrabus")
             timeout = int(self.get_option_value("timeout"))
-            self.serial = hb_connect(device=device, baudrate=115200, timeout=timeout)
+            self.serial = hb_connect_bbio(device=device, baudrate=115200, timeout=timeout)
             if not self.serial:
                 return False
             return True
@@ -199,6 +199,7 @@ class Baudrate(AModule):
             return False
 
     def run(self):
+        print("good")
         if self.connect():
             self.baudrate_detect()
             self.logger.handle("Reset hydrabus to console mode", Logger.INFO)
