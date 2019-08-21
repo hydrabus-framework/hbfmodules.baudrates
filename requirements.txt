@@ -1,4 +1,4 @@
 prompt_toolkit==2.0.9
 serial==0.0.97
 pyserial==3.4
-hydrabus_framework >= 0.1
+hydrabus_framework >= 0.0.1
