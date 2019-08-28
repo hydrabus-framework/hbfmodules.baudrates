@@ -16,8 +16,8 @@ class Baudrate(AModule):
     Iterate baudrate to find the correct value
     TODO: Add Parity bit and Stop bit option
     """
-    def __init__(self):
-        super(Baudrate, self).__init__()
+    def __init__(self, hbf_config):
+        super(Baudrate, self).__init__(hbf_config)
         self.logger = Logger()
         self.vowels = ["a", "A", "e", "E", "i", "I", "o", "O", "u", "U"]
         self.whitespace = [" ", "\t", "\r", "\n"]
@@ -34,9 +34,9 @@ class Baudrate(AModule):
         })
         self.options = [
             {"Name": "hydrabus", "Value": "", "Required": True, "Type": "string",
-             "Description": "Hydrabus device", "Default": "/dev/ttyACM0"},
+             "Description": "Hydrabus device", "Default": self.config["HYDRABUS"]["port"]},
             {"Name": "timeout", "Value": "", "Required": True, "Type": "int",
-             "Description": "Hydrabus read timeout", "Default": 2},
+             "Description": "Hydrabus read timeout", "Default": self.config["HYDRABUS"]["read_timeout"]},
             {"Name": "trigger", "Value": "", "Required": True, "Type": "bool",
              "Description": "If true, trigger the device if hydrabus didn't receive anything from the target",
              "Default": False}
