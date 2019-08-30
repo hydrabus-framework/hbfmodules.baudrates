@@ -199,7 +199,6 @@ class Baudrate(AModule):
             return False
 
     def run(self):
-        print("good")
         if self.connect():
             self.baudrate_detect()
             self.logger.handle("Reset hydrabus to console mode", Logger.INFO)
