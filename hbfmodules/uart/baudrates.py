@@ -6,8 +6,8 @@ from hydrabus_framework.core.command.miniterm import miniterm
 from hydrabus_framework.core.config import load_config
 from hydrabus_framework.modules.AModule import AModule
 from hydrabus_framework.utils.logger import Logger
-from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn, hb_reset, hb_close, hb_connect_bbio
-from hydrabus_framework.utils.protocols.uart import hb_set_baudrate
+from hydrabus_framework.utils.hb_generic_cmd import hb_wait_ubtn
+from hydrabus_framework.utils.pyHydrabus.uart import UART
 from prompt_toolkit import prompt
 
 
@@ -23,9 +23,8 @@ class Baudrate(AModule):
         self.whitespace = [" ", "\t", "\r", "\n"]
         self.punctation = [".", ",", ":", ";", "?", "!"]
         self.control = [b'\x0e', b'\x0f', b'\xe0', b'\xfe', b'\xc0']
-        self.baudrates = [{"dec": 9600, "hex": b'\x64'}, {"dec": 19200, "hex": b'\x65'}, {"dec": 38400, "hex": b'\x66'},
-                          {"dec": 57600, "hex": b'\x67'}, {"dec": 115200, "hex": b'\x6a'}]
-        self.serial = serial.Serial()
+        self.baudrates = [9600, 19200, 38400, 57600, 115200]
+        self.hb_serial = None
         self.meta.update({
             'name': 'UART baudrate detection',
             'version': '0.0.1',
@@ -62,20 +61,6 @@ class Baudrate(AModule):
                 valid_characters.append(c)
         return valid_characters
 
-    def hb_commands(self, byte):
-        """
-        This function write one byte then read the returned value
-        :param byte: The function in byte format sent to hydrabus
-        :return: the last byte received
-        """
-        if isinstance(byte, bytes):
-            self.serial.write(byte)
-            val = self.serial.read(1)
-            return val
-        else:
-            self.logger.handle("incorrect commands type - Bytes needed", Logger.ERROR)
-            return False
-
     def change_baudrate(self, baudrate):
         """
         This function change the baudrate speed for the target device.
@@ -84,13 +69,16 @@ class Baudrate(AModule):
         :param baudrate: Baudrate speed dictionary (decimal and hexadecimal value)
         :return: bool
         """
-        if not hb_set_baudrate(self.serial, baudrate):
+        self.init_hb()
+        self.hb_serial.baud = baudrate
+        if self.hb_serial.baud != baudrate:
+            self.logger.handle(f'Unable to switch to baudrate {baudrate}', Logger.ERROR)
             return False
         else:
-            # Activate echo UART RX Mode
+            # Starting binary UART bridge mode
+            self.logger.handle(f'switching to baudrate {baudrate}...', Logger.INFO)
             self.logger.handle("Starting BBIO_UART_BRIDGE", Logger.INFO)
-
-            self.hb_commands(b'\x0F')
+            self.hb_serial.bridge()
             return True
 
     def trigger_device(self):
@@ -99,9 +87,9 @@ class Baudrate(AModule):
         in case no byte(s) is received
         """
         self.logger.handle("Trigger the device", Logger.INFO)
-        self.serial.write(b'\x0D\x0A')
-        # Read back \r\n character
-        self.serial.read(2)
+        self.hb_serial.write(b'\x0D\x0A')
+        # Read back \r\n characters
+        self.hb_serial.read(2)
         time.sleep(0.5)
 
     def baudrate_detect(self):
@@ -131,7 +119,7 @@ class Baudrate(AModule):
             if self.change_baudrate(baudrate):
                 progress = self.logger.progress('Read byte')
                 while True:
-                    tmp = self.serial.read(1)
+                    tmp = self.hb_serial.read(1)
                     if len(tmp) > 0:
                         # Dynamic print
                         try:
@@ -160,16 +148,23 @@ class Baudrate(AModule):
                             progress.stop()
                             self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
                                                Logger.USER_INTERACT)
-                            hb_wait_ubtn(self.serial)
+                            hb_wait_ubtn(self.hb_serial)
                             break
                         if count >= threshold and whitespace > 0 and punctuation >= 0 and vowels > 0:
                             progress.stop()
-                            self.logger.handle("Valid Baudrate found: {}".format(baudrate["dec"]), Logger.RESULT)
+                            self.logger.handle("Valid Baudrate found: {}".format(baudrate), Logger.RESULT)
                             resp = prompt('Would you like to open a miniterm session ? N/y: ')
                             if resp.upper() == 'Y':
-                                hb_close(self.serial)
+                                self.hb_serial.hydrabus.close()
                                 config = load_config()
+                                config['HYDRABUS']['port'] = self.get_option_value("hydrabus")
                                 miniterm(config=config)
+                                # Run init_hb again to properly reset and close the hydrabus session
+                                self.init_hb()
+                                self.logger.handle("Please press hydrabus ubtn in order to return BBIO mode",
+                                                   Logger.USER_INTERACT)
+                                hb_wait_ubtn(self.hb_serial)
+                                break
                             break
                     elif trigger and loop < 3:
                         loop += 1
@@ -179,28 +174,29 @@ class Baudrate(AModule):
                         progress.stop()
                         self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed",
                                            Logger.USER_INTERACT)
-                        hb_wait_ubtn(self.serial)
+                        hb_wait_ubtn(self.hb_serial)
                         break
             else:
                 self.logger.handle("Please press hydrabus ubtn in order to switch baudrate speed", Logger.USER_INTERACT)
-                hb_wait_ubtn(self.serial)
+                hb_wait_ubtn(self.hb_serial)
                 break
 
-    def connect(self):
+    def init_hb(self):
         try:
             device = self.get_option_value("hydrabus")
             timeout = int(self.get_option_value("timeout"))
-            self.serial = hb_connect_bbio(device=device, baudrate=115200, timeout=timeout)
-            if not self.serial:
-                return False
+            self.hb_serial = UART(device)
+            self.hb_serial.timeout = timeout
             return True
-        except UserWarning as err:
+        except serial.SerialException as err:
             self.logger.handle("{}".format(err), Logger.ERROR)
             return False
 
     def run(self):
-        if self.connect():
+        if self.init_hb():
             self.baudrate_detect()
             self.logger.handle("Reset hydrabus to console mode", Logger.INFO)
-            hb_reset(self.serial)
-            hb_close(self.serial)
+            self.hb_serial.hydrabus.exit_bbio()
+            self.hb_serial.hydrabus.close()
+        else:
+            self.logger.handle("Unable to init hydrabus in UART mode, please try the 'reset' command", Logger.ERROR)
